@@ -13,12 +13,14 @@
   "type": "commonjs",
   "dependencies": {
     "@supabase/supabase-js": "^2.108.1",
-    "axios": "^1.17.0",
+    "@xmldom/xmldom": "^0.9.10",
+    "axios": "^1.18.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "node-forge": "^1.4.0",
     "ws": "^8.21.0",
+    "xml-crypto": "^6.1.2",
     "xml2js": "^0.6.2"
   }
 }

@@ -89,30 +89,100 @@ app.post('/emitir-nota', async (req, res) => {
             return res.status(403).json({ error: 'Falha ao destrancar o certificado. Verifique a senha cadastrada.' });
         }
 
-        // 4. Preparar o JSON/XML para a API Nacional
-        const dpsPayload = {
-            "infDPS": {
-                "tpAmb": process.env.AMBIENTE === 'producao' ? 1 : 2,
-                "prest": { "cpfCnpj": { "cnpj": credenciais.cnpj.replace(/\D/g, '') } },
-                "toma": cpf_cnpj ? { "cpfCnpj": { "cpf": cpf_cnpj.replace(/\D/g, '') }, "xNome": cliente } : null,
-                "serv": {
-                    "cServ": { "cTribNac": "060101", "xDesc": servico },
-                    "vServ": { "vPServ": valor }
-                }
-            }
-        };
+        const { extractPemFromPfx } = require('./certificado');
+        const { assinarXML } = require('./xml_signer');
+        const axios = require('axios');
 
-        // Simulação de Sucesso (Enviando pro Governo)
-        console.log(`[API] Emitindo nota para ${cliente} no CNPJ Emissor ${credenciais.cnpj}...`);
+        // Extrai a chave privada e certificado do pfxBuffer
+        // Obs: pfxBuffer vem do Supabase, vamos salvá-lo num arquivo temporário apenas se o node-forge pedir, 
+        // mas extractPemFromPfx precisa do arquivo no disco. Vamos criar um temp file.
+        const tempPfxPath = path.join(__dirname, `temp_${Date.now()}.pfx`);
+        fs.writeFileSync(tempPfxPath, pfxBuffer);
         
-        setTimeout(() => {
+        let privateKey, certificate;
+        try {
+            const extracted = extractPemFromPfx(tempPfxPath, credenciais.senha);
+            privateKey = extracted.privateKey;
+            certificate = extracted.certificate;
+            fs.unlinkSync(tempPfxPath); // Limpar arquivo
+        } catch (e) {
+            if (fs.existsSync(tempPfxPath)) fs.unlinkSync(tempPfxPath);
+            console.error('[ERRO] Falha ao extrair chaves do PFX:', e.message);
+            return res.status(403).json({ error: 'Falha ao processar o certificado PFX.' });
+        }
+
+        // 4. Preparar o XML da DPS (Padrão Nacional)
+        const ambienteId = process.env.AMBIENTE === 'producao' ? 1 : 2;
+        const dpsId = `DPS${Date.now()}`;
+        const dataEmissao = new Date().toISOString().split('.')[0] + '-03:00'; // Formato esperado
+
+        let xmlDPS = `<?xml version="1.0" encoding="UTF-8"?>
+<DPS xmlns="http://www.sped.fazenda.gov.br/nfse">
+  <infDPS Id="${dpsId}">
+    <tpAmb>${ambienteId}</tpAmb>
+    <dhEmi>${dataEmissao}</dhEmi>
+    <prest>
+      <cpfCnpj>
+        <cnpj>${credenciais.cnpj.replace(/\D/g, '')}</cnpj>
+      </cpfCnpj>
+    </prest>
+    <toma>
+      ${cpf_cnpj ? `<cpfCnpj><cpf>${cpf_cnpj.replace(/\D/g, '')}</cpf></cpfCnpj><xNome>${cliente}</xNome>` : `<xNome>Consumidor Final</xNome>`}
+    </toma>
+    <serv>
+      <locPrest>
+        <cMun>3303302</cMun> <!-- Código IBGE de Niterói -->
+      </locPrest>
+      <cServ>
+        <cTribNac>060101</cTribNac> <!-- Cabeleireiros, manicures, pedicures -->
+        <xDesc>${servico}</xDesc>
+      </cServ>
+      <vServ>
+        <vPServ>${parseFloat(valor).toFixed(2)}</vPServ>
+      </vServ>
+    </serv>
+  </infDPS>
+</DPS>`;
+
+        // 5. Assinar XML
+        const xmlAssinado = assinarXML(xmlDPS, privateKey, certificate, dpsId);
+
+        console.log(`[API] Enviando nota Nacional para ${cliente} no CNPJ Emissor ${credenciais.cnpj}...`);
+        
+        // 6. Enviar para a API Nacional via Axios com mTLS
+        const adnUrl = ambienteId === 1 
+            ? 'https://adn.nfse.gov.br/v1/nfse' 
+            : 'https://adn.producaorestrita.nfse.gov.br/v1/nfse';
+
+        try {
+            // OBS: Esta é uma chamada de teste baseada na URL padrão do ADN.
+            // O endpoint real para emissão pode variar conforme documentação exata da Sefin Nacional.
+            const response = await axios.post(adnUrl, xmlAssinado, {
+                headers: {
+                    'Content-Type': 'application/xml',
+                    'Accept': 'application/xml'
+                },
+                httpsAgent: httpsAgent
+            });
+
+            console.log('[API] Resposta da Sefin:', response.data);
+
             res.status(200).json({
                 sucesso: true,
-                mensagem: 'Nota emitida com sucesso! (Modo Simulação)',
-                nota_fiscal_url: `https://www.nfs-e.gov.br/ver-nota/SIMULACAO-${Date.now()}`
+                mensagem: 'Nota enviada para a API Nacional com sucesso!',
+                recibo: response.data,
+                // O link da nota oficial geralmente retorna no XML da Sefin. Aqui é um placeholder.
+                nota_fiscal_url: `https://www.nfse.gov.br/consultar-nota`
             });
-            console.log('[API] Operação concluída. Dados apagados da memória.');
-        }, 1500);
+            console.log('[API] Operação concluída.');
+
+        } catch (apiError) {
+            console.error('[ERRO SEFIN]:', apiError.response ? apiError.response.data : apiError.message);
+            res.status(502).json({ 
+                error: 'Erro na API do Governo', 
+                detalhes: apiError.response ? apiError.response.data : apiError.message 
+            });
+        }
 
     } catch (error) {
         console.error('[ERRO FATAL]:', error.message);
