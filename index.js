@@ -21,9 +21,13 @@ if (!supabaseUrl || !supabaseKey) {
 
 // Em ambientes Node.js < 22 o Supabase exige o pacote 'ws' para funcionar a parte de Realtime/Sockets
 const WebSocket = require('ws');
+global.WebSocket = WebSocket; // Define globalmente para o supabase-js achar
+
 const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: { persistSession: false },
-    global: { WebSocket }
+    realtime: {
+        transport: WebSocket
+    }
 });
 
 // Rota principal para o N8N fazer o POST
