@@ -18,7 +18,13 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!supabaseUrl || !supabaseKey) {
     console.error("⚠️  AVISO: SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY não configurados no .env!");
 }
-const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Em ambientes Node.js < 22 o Supabase exige o pacote 'ws' para funcionar a parte de Realtime/Sockets
+const WebSocket = require('ws');
+const supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: { persistSession: false },
+    global: { WebSocket }
+});
 
 // Rota principal para o N8N fazer o POST
 app.post('/emitir-nota', async (req, res) => {
