@@ -105,7 +105,7 @@ app.post('/emitir-nota', async (req, res) => {
         });
 
         // 4. Preparar o XML da DPS (Padrão Nacional)
-        const ambienteId = 1; // FORCED TO PRODUCTION FOR THE 1 REAL TEST
+        const ambienteId = process.env.AMBIENTE === 'producao' ? 1 : 2;
         const nDPS = Math.floor(Math.random() * 999999999) + 1; // Número sequencial da DPS
         const nDPSStr = String(nDPS).padStart(15, '0');
         const cMunEmi = '3303302'; // Código do município de emissão
