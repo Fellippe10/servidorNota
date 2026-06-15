@@ -342,6 +342,42 @@ app.post('/create-preference', async (req, res) => {
     }
 });
 
+// ROTA: Processar Pagamento (Checkout Transparente / Bricks)
+app.post('/process-payment', async (req, res) => {
+    try {
+        const { token, issuer_id, payment_method_id, transaction_amount, installments, payer, description } = req.body;
+        
+        const payment = new Payment(mpClient);
+        const result = await payment.create({
+            body: {
+                token,
+                issuer_id,
+                payment_method_id,
+                transaction_amount: Number(transaction_amount),
+                installments: Number(installments) || 1,
+                description: description || 'Agendamento Barbearia',
+                payer: {
+                    email: payer?.email,
+                    identification: payer?.identification,
+                },
+            }
+        });
+
+        console.log(`[MP] Pagamento criado: ${result.id} - Status: ${result.status}`);
+        res.json({
+            id: result.id,
+            status: result.status,
+            status_detail: result.status_detail,
+            payment_method_id: result.payment_method_id,
+            // Dados para Pix (QR Code)
+            point_of_interaction: result.point_of_interaction,
+        });
+    } catch (e) {
+        console.error('[MP PAGAMENTO ERRO]', e.message);
+        res.status(400).json({ error: e.message });
+    }
+});
+
 // WEBHOOK: Receber notificações do Mercado Pago
 app.post('/webhook/mercadopago', async (req, res) => {
     try {
