@@ -333,12 +333,6 @@ app.post('/create-preference', async (req, res) => {
                     excluded_payment_types: [],
                     installments: 1,
                 },
-                back_urls: {
-                    success: back_url || 'https://seubarbearia.com/sucesso',
-                    failure: back_url || 'https://seubarbearia.com/falha',
-                    pending: back_url || 'https://seubarbearia.com/pendente',
-                },
-                auto_return: 'approved',
             }
         });
         res.json({ id: result.id, init_point: result.init_point, sandbox_init_point: result.sandbox_init_point });
