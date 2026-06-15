@@ -199,6 +199,8 @@ app.post('/emitir-nota', async (req, res) => {
             ? 'https://sefin.nfse.gov.br/SefinNacional/nfse' 
             : 'https://sefin.producaorestrita.nfse.gov.br/SefinNacional/nfse';
 
+        console.log(`[API] Ambiente ID: ${ambienteId} | URL: ${sefinUrl}`);
+
         try {
             const response = await axios.post(sefinUrl, payloadJson, {
                 headers: {
