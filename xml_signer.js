@@ -26,7 +26,11 @@ function CustomKeyInfoProvider(certificate) {
  * @returns {string} XML assinado
  */
 function assinarXML(xml, privateKey, certificate, referenceId) {
-    const sig = new SignedXml();
+    const sig = new SignedXml({
+        privateKey: privateKey,
+        signatureAlgorithm: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256',
+        canonicalizationAlgorithm: 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315'
+    });
     // A referência usa XPath buscando o atributo Id
     sig.addReference({
         xpath: `//*[@Id="${referenceId}"]`,
@@ -37,9 +41,6 @@ function assinarXML(xml, privateKey, certificate, referenceId) {
         digestAlgorithm: 'http://www.w3.org/2001/04/xmlenc#sha256'
     });
     
-    sig.signatureAlgorithm = 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256';
-    sig.canonicalizationAlgorithm = 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315';
-    sig.signingKey = privateKey;
     sig.keyInfoProvider = new CustomKeyInfoProvider(certificate);
     
     sig.computeSignature(xml);
