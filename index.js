@@ -106,7 +106,11 @@ app.post('/emitir-nota', async (req, res) => {
 
         // 4. Preparar o XML da DPS (Padrão Nacional)
         const ambienteId = process.env.AMBIENTE === 'producao' ? 1 : 2;
-        const dpsId = `DPS${Date.now()}`;
+        // O Id da DPS deve seguir o padrão ^(DPS[0-9]{42})$
+        // Para testes, vamos usar o CNPJ (14) + Timestamp padronizado para 28 caracteres = 42
+        const cnpjPuro = credenciais.cnpj.replace(/\D/g, '').padStart(14, '0');
+        const dpsNumeroId = cnpjPuro + String(Date.now()).padEnd(28, '0');
+        const dpsId = `DPS${dpsNumeroId}`;
         const dataEmissao = new Date().toISOString().split('.')[0] + '-03:00'; // Formato esperado
 
         let xmlDPS = `<?xml version="1.0" encoding="UTF-8"?>
