@@ -28,14 +28,14 @@ function CustomKeyInfoProvider(certificate) {
 function assinarXML(xml, privateKey, certificate, referenceId) {
     const sig = new SignedXml();
     // A referência usa XPath buscando o atributo Id
-    sig.addReference(
-        `//*[@Id="${referenceId}"]`,
-        [
+    sig.addReference({
+        xpath: `//*[@Id="${referenceId}"]`,
+        transforms: [
             'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
             'http://www.w3.org/TR/2001/REC-xml-c14n-20010315'
         ],
-        'http://www.w3.org/2001/04/xmlenc#sha256'
-    );
+        digestAlgorithm: 'http://www.w3.org/2001/04/xmlenc#sha256'
+    });
     
     sig.signatureAlgorithm = 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256';
     sig.signingKey = privateKey;
