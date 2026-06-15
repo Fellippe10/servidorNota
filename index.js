@@ -106,11 +106,16 @@ app.post('/emitir-nota', async (req, res) => {
 
         // 4. Preparar o XML da DPS (Padrão Nacional)
         const ambienteId = process.env.AMBIENTE === 'producao' ? 1 : 2;
-        // O Id da DPS deve seguir o padrão ^(DPS[0-9]{42})$
-        // Para testes, vamos usar o CNPJ (14) + Timestamp padronizado para 28 caracteres = 42
+        const nDPS = Math.floor(Math.random() * 999999999) + 1; // Número sequencial da DPS
+        const nDPSStr = String(nDPS).padStart(15, '0');
+        const cMunEmi = '3303302'; // Código do município de emissão
+        const tpInscFed = '2'; // 2 = CNPJ
+        const serieStr = '00001';
         const cnpjPuro = credenciais.cnpj.replace(/\D/g, '').padStart(14, '0');
-        const dpsNumeroId = cnpjPuro + String(Date.now()).padEnd(28, '0');
-        const dpsId = `DPS${dpsNumeroId}`;
+        
+        // Padrão Sefin Nacional: DPS(3) + cMunEmi(7) + tpInsc(1) + CNPJ(14) + serie(5) + numero(15) = 45 posições
+        const dpsId = `DPS${cMunEmi}${tpInscFed}${cnpjPuro}${serieStr}${nDPSStr}`;
+
         // Gerar data/hora no fuso de Brasília (-03:00) corretamente
         // Subtrair 1 minuto de segurança para evitar rejeição por diferença de relógio
         const now = new Date(Date.now() - 60000);
@@ -123,7 +128,6 @@ app.post('/emitir-nota', async (req, res) => {
         ));
         const dataEmissao = `${brDate.getUTCFullYear()}-${pad(brDate.getUTCMonth()+1)}-${pad(brDate.getUTCDate())}T${pad(brDate.getUTCHours())}:${pad(brDate.getUTCMinutes())}:${pad(brDate.getUTCSeconds())}-03:00`;
         const dataCompetencia = `${brDate.getUTCFullYear()}-${pad(brDate.getUTCMonth()+1)}-${pad(brDate.getUTCDate())}`;
-        const nDPS = Math.floor(Math.random() * 999999999) + 1; // Número sequencial da DPS
 
         let xmlDPS = `<?xml version="1.0" encoding="UTF-8"?>
 <DPS xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.00">
@@ -131,7 +135,7 @@ app.post('/emitir-nota', async (req, res) => {
     <tpAmb>${ambienteId}</tpAmb>
     <dhEmi>${dataEmissao}</dhEmi>
     <verAplic>MeuSalao_1.0</verAplic>
-    <serie>00001</serie>
+    <serie>1</serie>
     <nDPS>${nDPS}</nDPS>
     <dCompet>${dataCompetencia}</dCompet>
     <tpEmit>1</tpEmit>
