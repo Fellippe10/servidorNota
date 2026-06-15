@@ -75,27 +75,11 @@ app.post('/emitir-nota', async (req, res) => {
 
         const pfxBuffer = Buffer.from(await pfxBlob.arrayBuffer());
 
-        // 3. Preparar Conexão Segura (mTLS) com o Governo
-        let httpsAgent;
-        try {
-            httpsAgent = new https.Agent({
-                pfx: pfxBuffer,
-                passphrase: credenciais.senha,
-                rejectUnauthorized: false
-            });
-            console.log('[API] Certificado aberto com sucesso na RAM e pronto para assinar!');
-        } catch (certError) {
-            console.error('[ERRO] Senha incorreta ou arquivo corrompido:', certError.message);
-            return res.status(403).json({ error: 'Falha ao destrancar o certificado. Verifique a senha cadastrada.' });
-        }
-
         const { extractPemFromPfx } = require('./certificado');
         const { assinarXML } = require('./xml_signer');
         const axios = require('axios');
 
         // Extrai a chave privada e certificado do pfxBuffer
-        // Obs: pfxBuffer vem do Supabase, vamos salvá-lo num arquivo temporário apenas se o node-forge pedir, 
-        // mas extractPemFromPfx precisa do arquivo no disco. Vamos criar um temp file.
         const tempPfxPath = path.join(__dirname, `temp_${Date.now()}.pfx`);
         fs.writeFileSync(tempPfxPath, pfxBuffer);
         
@@ -105,11 +89,19 @@ app.post('/emitir-nota', async (req, res) => {
             privateKey = extracted.privateKey;
             certificate = extracted.certificate;
             fs.unlinkSync(tempPfxPath); // Limpar arquivo
+            console.log('[API] Certificado aberto com sucesso na RAM e pronto para assinar!');
         } catch (e) {
             if (fs.existsSync(tempPfxPath)) fs.unlinkSync(tempPfxPath);
             console.error('[ERRO] Falha ao extrair chaves do PFX:', e.message);
-            return res.status(403).json({ error: 'Falha ao processar o certificado PFX.' });
+            return res.status(403).json({ error: 'Falha ao processar o certificado PFX ou senha incorreta.' });
         }
+
+        // 3. Preparar Conexão Segura (mTLS) com o Governo (usando PEM para fugir do erro de PFX do Node 18+)
+        let httpsAgent = new https.Agent({
+            cert: certificate,
+            key: privateKey,
+            rejectUnauthorized: false
+        });
 
         // 4. Preparar o XML da DPS (Padrão Nacional)
         const ambienteId = process.env.AMBIENTE === 'producao' ? 1 : 2;
