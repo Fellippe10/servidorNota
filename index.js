@@ -161,7 +161,7 @@ app.post('/emitir-nota', async (req, res) => {
         <cLocPrestacao>3303302</cLocPrestacao>
       </locPrest>
       <cServ>
-        <cTribNac>010401</cTribNac>
+        <cTribNac>010400</cTribNac>
         <xDescServ>${servico}</xDescServ>
       </cServ>
     </serv>
