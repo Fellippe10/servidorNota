@@ -111,7 +111,10 @@ app.post('/emitir-nota', async (req, res) => {
         const cnpjPuro = credenciais.cnpj.replace(/\D/g, '').padStart(14, '0');
         const dpsNumeroId = cnpjPuro + String(Date.now()).padEnd(28, '0');
         const dpsId = `DPS${dpsNumeroId}`;
-        const dataEmissao = new Date().toISOString().split('.')[0] + '-03:00';
+        // Gerar data/hora no fuso de Brasília (-03:00) corretamente
+        const now = new Date();
+        const brasilTime = new Date(now.getTime() - (3 * 60 * 60 * 1000));
+        const dataEmissao = brasilTime.toISOString().split('.')[0] + '-03:00';
         const dataCompetencia = new Date().toISOString().split('T')[0]; // AAAA-MM-DD
         const nDPS = Math.floor(Math.random() * 999999999) + 1; // Número sequencial da DPS
 
