@@ -128,6 +128,9 @@ app.post('/emitir-nota', async (req, res) => {
     <cLocEmi>3303302</cLocEmi>
     <prest>
       <CNPJ>${credenciais.cnpj.replace(/\D/g, '')}</CNPJ>
+      <regTrib>
+        <opSN>1</opSN>
+      </regTrib>
     </prest>
     <toma>
       ${cpf_cnpj ? `<CPF>${cpf_cnpj.replace(/\D/g, '')}</CPF><xNome>${cliente}</xNome>` : `<xNome>Consumidor Final</xNome>`}
