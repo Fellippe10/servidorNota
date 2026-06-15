@@ -140,7 +140,7 @@ app.post('/emitir-nota', async (req, res) => {
     </toma>` : ''}
     <serv>
       <locPrest>
-        <cMun>3303302</cMun>
+        <cLocPrestacao>3303302</cLocPrestacao>
       </locPrest>
       <cServ>
         <cTribNac>060101</cTribNac>
