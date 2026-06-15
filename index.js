@@ -110,8 +110,8 @@ app.post('/emitir-nota', async (req, res) => {
         const dataEmissao = new Date().toISOString().split('.')[0] + '-03:00'; // Formato esperado
 
         let xmlDPS = `<?xml version="1.0" encoding="UTF-8"?>
-<DPS xmlns="http://www.sped.fazenda.gov.br/nfse">
-  <infDPS Id="${dpsId}">
+<DPS xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.00">
+  <infDPS Id="${dpsId}" versao="1.00">
     <tpAmb>${ambienteId}</tpAmb>
     <dhEmi>${dataEmissao}</dhEmi>
     <prest>
