@@ -129,7 +129,7 @@ app.post('/emitir-nota', async (req, res) => {
     <prest>
       <CNPJ>${credenciais.cnpj.replace(/\D/g, '')}</CNPJ>
       <regTrib>
-        <opSN>1</opSN>
+        <opSimpNac>1</opSimpNac>
       </regTrib>
     </prest>
     <toma>
