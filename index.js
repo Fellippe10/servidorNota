@@ -111,7 +111,9 @@ app.post('/emitir-nota', async (req, res) => {
         const cnpjPuro = credenciais.cnpj.replace(/\D/g, '').padStart(14, '0');
         const dpsNumeroId = cnpjPuro + String(Date.now()).padEnd(28, '0');
         const dpsId = `DPS${dpsNumeroId}`;
-        const dataEmissao = new Date().toISOString().split('.')[0] + '-03:00'; // Formato esperado
+        const dataEmissao = new Date().toISOString().split('.')[0] + '-03:00';
+        const dataCompetencia = new Date().toISOString().split('T')[0]; // AAAA-MM-DD
+        const nDPS = Math.floor(Math.random() * 999999999) + 1; // Número sequencial da DPS
 
         let xmlDPS = `<?xml version="1.0" encoding="UTF-8"?>
 <DPS xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.00">
@@ -119,26 +121,31 @@ app.post('/emitir-nota', async (req, res) => {
     <tpAmb>${ambienteId}</tpAmb>
     <dhEmi>${dataEmissao}</dhEmi>
     <verAplic>MeuSalao_1.0</verAplic>
+    <serie>00001</serie>
+    <nDPS>${nDPS}</nDPS>
+    <dCompet>${dataCompetencia}</dCompet>
+    <tpEmit>1</tpEmit>
+    <cLocEmi>3303302</cLocEmi>
     <prest>
-      <cpfCnpj>
-        <cnpj>${credenciais.cnpj.replace(/\D/g, '')}</cnpj>
-      </cpfCnpj>
+      <CNPJ>${credenciais.cnpj.replace(/\D/g, '')}</CNPJ>
     </prest>
     <toma>
-      ${cpf_cnpj ? `<cpfCnpj><cpf>${cpf_cnpj.replace(/\D/g, '')}</cpf></cpfCnpj><xNome>${cliente}</xNome>` : `<xNome>Consumidor Final</xNome>`}
+      ${cpf_cnpj ? `<CPF>${cpf_cnpj.replace(/\D/g, '')}</CPF><xNome>${cliente}</xNome>` : `<xNome>Consumidor Final</xNome>`}
     </toma>
     <serv>
       <locPrest>
-        <cMun>3303302</cMun> <!-- Código IBGE de Niterói -->
+        <cMun>3303302</cMun>
       </locPrest>
       <cServ>
-        <cTribNac>060101</cTribNac> <!-- Cabeleireiros, manicures, pedicures -->
-        <xDesc>${servico}</xDesc>
+        <cTribNac>060101</cTribNac>
+        <xDescServ>${servico}</xDescServ>
       </cServ>
-      <vServ>
-        <vPServ>${parseFloat(valor).toFixed(2)}</vPServ>
-      </vServ>
     </serv>
+    <valores>
+      <vServPrest>
+        <vServ>${parseFloat(valor).toFixed(2)}</vServ>
+      </vServPrest>
+    </valores>
   </infDPS>
 </DPS>`;
 
