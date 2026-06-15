@@ -247,11 +247,8 @@ app.get('/parametros-municipio/:municipio', async (req, res) => {
         }
         const senhasStr = fs.readFileSync(senhasPath, 'utf8');
         const senhas = JSON.parse(senhasStr);
-        let senhaCertificado = null;
-        for (const key in senhas) {
-            if (senhas[key].cnpj === cnpj) senhaCertificado = senhas[key].senha;
-        }
-        if (!senhaCertificado) return res.status(400).json({error: 'CNPJ não encontrado nas senhas.'});
+        let senhaCertificado = senhas[estabelecimento_id] ? senhas[estabelecimento_id].senha : null;
+        if (!senhaCertificado) return res.status(400).json({error: 'Estabelecimento ID não encontrado nas senhas.'});
 
         // Baixar certificado
         const { data: certData, error: certError } = await supabase.storage.from('certificados').download(`${estabelecimento_id}.pfx`);
