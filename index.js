@@ -134,9 +134,10 @@ app.post('/emitir-nota', async (req, res) => {
         <regEspTrib>0</regEspTrib>
       </regTrib>
     </prest>
-    <toma>
-      ${cpf_cnpj ? `<CPF>${cpf_cnpj.replace(/\D/g, '')}</CPF><xNome>${cliente}</xNome>` : `<xNome>Consumidor Final</xNome>`}
-    </toma>
+    ${cpf_cnpj ? `<toma>
+      <CPF>${cpf_cnpj.replace(/\D/g, '')}</CPF>
+      <xNome>${cliente}</xNome>
+    </toma>` : ''}
     <serv>
       <locPrest>
         <cMun>3303302</cMun>
