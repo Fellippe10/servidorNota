@@ -234,6 +234,71 @@ app.post('/emitir-nota', async (req, res) => {
     }
 });
 
+app.get('/parametros-municipio/:municipio', async (req, res) => {
+    try {
+        const { municipio } = req.params;
+        const ambiente = req.query.amb || '2';
+        const estabelecimento_id = "e53d52ee-8ec9-4bfb-b4c1-b2cd96f349a3";
+        const cnpj = "66603175000100";
+        
+        // Obter senha do certificado no arquivo local de senhas
+        const senhasPath = path.join(__dirname, 'senhas.json');
+        const senhasStr = fs.readFileSync(senhasPath, 'utf8');
+        const senhas = JSON.parse(senhasStr);
+        let senhaCertificado = null;
+        for (const key in senhas) {
+            if (senhas[key].cnpj === cnpj) senhaCertificado = senhas[key].senha;
+        }
+        if (!senhaCertificado) return res.status(400).json({error: 'CNPJ não encontrado nas senhas.'});
+
+        // Baixar certificado
+        const { data: certData, error: certError } = await supabase.storage.from('certificados').download(`${estabelecimento_id}.pfx`);
+        if (certError) throw certError;
+
+        const certBuffer = Buffer.from(await certData.arrayBuffer());
+        const tempPfxPath = path.join(__dirname, `temp_cert_${Date.now()}.pfx`);
+        fs.writeFileSync(tempPfxPath, certBuffer);
+
+        const { extractPemFromPfx } = require('./certificado');
+        const { certificate, privateKey } = extractPemFromPfx(tempPfxPath, senhaCertificado);
+        fs.unlinkSync(tempPfxPath);
+
+        const httpsAgent = new https.Agent({ cert: certificate, key: privateKey, rejectUnauthorized: false });
+        const axios = require('axios');
+
+        const baseUrl = ambiente === '1' 
+            ? 'https://sefin.nfse.gov.br/SefinNacional' 
+            : 'https://sefin.producaorestrita.nfse.gov.br/SefinNacional';
+
+        // Endpoint de convenio
+        const convenioUrl = `${baseUrl}/parametros_municipais/${municipio}/convenio`;
+        const respConvenio = await axios.get(convenioUrl, { headers: { 'Accept': 'application/json' }, httpsAgent });
+
+        // Endpoint de servicos para o codigo 01.04.01
+        let servicoInfo = null;
+        try {
+            const servicoUrl = `${baseUrl}/parametros_municipais/${municipio}/010401`;
+            const respServico = await axios.get(servicoUrl, { headers: { 'Accept': 'application/json' }, httpsAgent });
+            servicoInfo = respServico.data;
+        } catch (e) {
+            servicoInfo = e.response ? e.response.data : e.message;
+        }
+
+        res.json({
+            ambiente: ambiente === '1' ? 'Producao' : 'Homologacao',
+            municipio,
+            convenio: respConvenio.data,
+            servico_010401: servicoInfo
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            error: error.message,
+            detalhes: error.response?.data || null
+        });
+    }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`🚀 Microserviço Multi-Tenant NFS-e rodando na porta ${PORT}`);
