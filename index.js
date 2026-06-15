@@ -154,7 +154,7 @@ app.post('/emitir-nota', async (req, res) => {
       <trib>
         <tribMun>
           <tribISSQN>1</tribISSQN>
-          <tpRetISSQN>2</tpRetISSQN>
+          <tpRetISSQN>1</tpRetISSQN>
         </tribMun>
         <totTrib>
           <indTotTrib>0</indTotTrib>
