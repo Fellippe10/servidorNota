@@ -378,6 +378,22 @@ app.post('/process-payment', async (req, res) => {
     }
 });
 
+// ROTA: Verificar status do pagamento (para polling do Pix)
+app.get('/payment-status/:id', async (req, res) => {
+    try {
+        const payment = new Payment(mpClient);
+        const result = await payment.get({ id: req.params.id });
+        res.json({
+            id: result.id,
+            status: result.status,
+            status_detail: result.status_detail,
+        });
+    } catch (e) {
+        console.error('[MP STATUS ERRO]', e.message);
+        res.status(400).json({ error: e.message });
+    }
+});
+
 // WEBHOOK: Receber notificações do Mercado Pago
 app.post('/webhook/mercadopago', async (req, res) => {
     try {
