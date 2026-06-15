@@ -9,6 +9,30 @@ require('dotenv').config();
 
 const app = express();
 app.use(cors());
+
+// Stripe require and initialization
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+// Webhook precisa de express.raw ANTES do express.json()
+app.post('/webhook/stripe', express.raw({type: 'application/json'}), (request, response) => {
+  const sig = request.headers['stripe-signature'];
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(request.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+  } catch (err) {
+    console.error(`Webhook Error: ${err.message}`);
+    return response.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  if (event.type === 'payment_intent.succeeded') {
+    const paymentIntentSucceeded = event.data.object;
+    console.log('✅ Pagamento confirmado via Stripe Webhook!', paymentIntentSucceeded.id);
+    // TODO: Atualizar Supabase (Agendamento -> Status 'pago')
+  }
+
+  response.send();
+});
+
 app.use(express.json());
 
 // Inicializa o Cliente do Supabase com a Chave Mestra (Service Role Key)
@@ -309,6 +333,26 @@ app.get('/parametros-municipio/:municipio', async (req, res) => {
             error: error.message,
             detalhes: error.response?.data || null
         });
+    }
+});
+
+// ROTA: Criar Payment Intent (Stripe)
+app.post('/create-payment-intent', async (req, res) => {
+    try {
+        const { amount, currency, description } = req.body;
+        // amount comes in decimal (e.g. 50.00), Stripe expects cents (5000)
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: Math.round(amount * 100),
+            currency: currency || 'brl',
+            description: description || 'Agendamento Barbearia',
+            automatic_payment_methods: {
+                enabled: true,
+            },
+        });
+        res.json({ clientSecret: paymentIntent.client_secret });
+    } catch (e) {
+        console.error('[STRIPE ERRO]', e.message);
+        res.status(400).json({ error: e.message });
     }
 });
 
