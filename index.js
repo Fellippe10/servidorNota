@@ -148,10 +148,14 @@ app.post('/emitir-nota', async (req, res) => {
         <regEspTrib>0</regEspTrib>
       </regTrib>
     </prest>
-    ${cpf_cnpj ? `<toma>
-      <CPF>${cpf_cnpj.replace(/\D/g, '')}</CPF>
+    ${cpf_cnpj ? (() => {
+      const cleanDoc = cpf_cnpj.replace(/\D/g, '');
+      const docTag = cleanDoc.length === 14 ? 'CNPJ' : 'CPF';
+      return `<toma>
+      <${docTag}>${cleanDoc}</${docTag}>
       <xNome>${cliente}</xNome>
-    </toma>` : ''}
+    </toma>`;
+    })() : ''}
     <serv>
       <locPrest>
         <cLocPrestacao>3303302</cLocPrestacao>
