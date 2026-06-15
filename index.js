@@ -151,6 +151,15 @@ app.post('/emitir-nota', async (req, res) => {
       <vServPrest>
         <vServ>${parseFloat(valor).toFixed(2)}</vServ>
       </vServPrest>
+      <trib>
+        <tribMun>
+          <tribISSQN>1</tribISSQN>
+          <tpRetISSQN>2</tpRetISSQN>
+        </tribMun>
+        <totTrib>
+          <indTotTrib>0</indTotTrib>
+        </totTrib>
+      </trib>
     </valores>
   </infDPS>
 </DPS>`;
