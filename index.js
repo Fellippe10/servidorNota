@@ -112,9 +112,16 @@ app.post('/emitir-nota', async (req, res) => {
         const dpsNumeroId = cnpjPuro + String(Date.now()).padEnd(28, '0');
         const dpsId = `DPS${dpsNumeroId}`;
         // Gerar data/hora no fuso de Brasília (-03:00) corretamente
-        const now = new Date();
-        const brasilTime = new Date(now.getTime() - (3 * 60 * 60 * 1000));
-        const dataEmissao = brasilTime.toISOString().split('.')[0] + '-03:00';
+        // Subtrair 1 minuto de segurança para evitar rejeição por diferença de relógio
+        const now = new Date(Date.now() - 60000);
+        const pad = (n) => String(n).padStart(2, '0');
+        // Converter UTC para Brasília manualmente
+        const brHours = now.getUTCHours() - 3;
+        const brDate = new Date(Date.UTC(
+            now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(),
+            brHours, now.getUTCMinutes(), now.getUTCSeconds()
+        ));
+        const dataEmissao = `${brDate.getUTCFullYear()}-${pad(brDate.getUTCMonth()+1)}-${pad(brDate.getUTCDate())}T${pad(brDate.getUTCHours())}:${pad(brDate.getUTCMinutes())}:${pad(brDate.getUTCSeconds())}-03:00`;
         const dataCompetencia = new Date().toISOString().split('T')[0]; // AAAA-MM-DD
         const nDPS = Math.floor(Math.random() * 999999999) + 1; // Número sequencial da DPS
 
@@ -171,6 +178,7 @@ app.post('/emitir-nota', async (req, res) => {
         const xmlAssinado = assinarXML(xmlDPS, privateKey, certificate, dpsId);
 
         console.log(`[API] Enviando nota Nacional para ${cliente} no CNPJ Emissor ${credenciais.cnpj}...`);
+        console.log(`[DEBUG] dhEmi gerado: ${dataEmissao} | UTC agora: ${new Date().toISOString()}`);
         
         // 6. Preparar JSON com GZIP e Base64
         const xmlGzipB64 = zlib.gzipSync(Buffer.from(xmlAssinado, 'utf-8')).toString('base64');
