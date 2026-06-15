@@ -38,6 +38,7 @@ function assinarXML(xml, privateKey, certificate, referenceId) {
     });
     
     sig.signatureAlgorithm = 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256';
+    sig.canonicalizationAlgorithm = 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315';
     sig.signingKey = privateKey;
     sig.keyInfoProvider = new CustomKeyInfoProvider(certificate);
     
