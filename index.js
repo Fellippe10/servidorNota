@@ -241,8 +241,10 @@ app.get('/parametros-municipio/:municipio', async (req, res) => {
         const estabelecimento_id = "e53d52ee-8ec9-4bfb-b4c1-b2cd96f349a3";
         const cnpj = "66603175000100";
         
-        // Obter senha do certificado no arquivo local de senhas
-        const senhasPath = path.join(__dirname, 'senhas.json');
+        let senhasPath = path.join('/app/data', 'senhas.json');
+        if (!fs.existsSync(senhasPath)) {
+            senhasPath = path.join(__dirname, 'senhas.json');
+        }
         const senhasStr = fs.readFileSync(senhasPath, 'utf8');
         const senhas = JSON.parse(senhasStr);
         let senhaCertificado = null;
