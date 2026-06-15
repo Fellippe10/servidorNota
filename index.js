@@ -345,7 +345,9 @@ app.post('/create-payment-intent', async (req, res) => {
             amount: Math.round(amount * 100),
             currency: currency || 'brl',
             description: description || 'Agendamento Barbearia',
-            payment_method_types: ['card', 'pix'],
+            automatic_payment_methods: {
+                enabled: true,
+            },
         });
         res.json({ clientSecret: paymentIntent.client_secret });
     } catch (e) {
