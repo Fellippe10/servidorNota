@@ -3,6 +3,7 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
+const zlib = require('zlib');
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
@@ -141,18 +142,22 @@ app.post('/emitir-nota', async (req, res) => {
 
         console.log(`[API] Enviando nota Nacional para ${cliente} no CNPJ Emissor ${credenciais.cnpj}...`);
         
-        // 6. Enviar para a API Nacional via Axios com mTLS
-        const adnUrl = ambienteId === 1 
-            ? 'https://adn.nfse.gov.br/v1/nfse' 
-            : 'https://adn.producaorestrita.nfse.gov.br/v1/nfse';
+        // 6. Preparar JSON com GZIP e Base64
+        const xmlGzipB64 = zlib.gzipSync(Buffer.from(xmlAssinado, 'utf-8')).toString('base64');
+        const payloadJson = {
+            dpsXmlGZipB64: xmlGzipB64
+        };
+
+        // 7. Enviar para a API Nacional via Axios com mTLS
+        const sefinUrl = ambienteId === 1 
+            ? 'https://sefin.nfse.gov.br/SefinNacional/nfse' 
+            : 'https://sefin.producaorestrita.nfse.gov.br/SefinNacional/nfse';
 
         try {
-            // OBS: Esta é uma chamada de teste baseada na URL padrão do ADN.
-            // O endpoint real para emissão pode variar conforme documentação exata da Sefin Nacional.
-            const response = await axios.post(adnUrl, xmlAssinado, {
+            const response = await axios.post(sefinUrl, payloadJson, {
                 headers: {
-                    'Content-Type': 'application/xml',
-                    'Accept': 'application/xml'
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
                 httpsAgent: httpsAgent
             });
@@ -169,10 +174,11 @@ app.post('/emitir-nota', async (req, res) => {
             console.log('[API] Operação concluída.');
 
         } catch (apiError) {
-            console.error('[ERRO SEFIN]:', apiError.response ? apiError.response.data : apiError.message);
+            const sefinResponse = apiError.response ? apiError.response.data : apiError.message;
+            console.error('[ERRO SEFIN]:', JSON.stringify(sefinResponse));
             res.status(502).json({ 
                 error: 'Erro na API do Governo', 
-                detalhes: apiError.response ? apiError.response.data : apiError.message 
+                detalhes: sefinResponse 
             });
         }
 
