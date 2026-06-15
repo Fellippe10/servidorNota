@@ -266,14 +266,20 @@ app.get('/parametros-municipio/:municipio', async (req, res) => {
         const axios = require('axios');
 
         const baseUrl = ambiente === '1' 
-            ? 'https://sefin.nfse.gov.br/SefinNacional' 
-            : 'https://sefin.producaorestrita.nfse.gov.br/SefinNacional';
+            ? 'https://adn.nfse.gov.br' 
+            : 'https://adn.producaorestrita.nfse.gov.br';
 
         // Endpoint de convenio
-        const convenioUrl = `${baseUrl}/parametros_municipais/${municipio}/convenio`;
-        const respConvenio = await axios.get(convenioUrl, { headers: { 'Accept': 'application/json' }, httpsAgent });
+        let respConvenioData = null;
+        try {
+            const convenioUrl = `${baseUrl}/parametros_municipais/${municipio}/convenio`;
+            const respConvenio = await axios.get(convenioUrl, { headers: { 'Accept': 'application/json' }, httpsAgent });
+            respConvenioData = respConvenio.data;
+        } catch (e) {
+            respConvenioData = e.response ? e.response.data : e.message;
+        }
 
-        // Endpoint de servicos para o codigo 01.04.01
+        // Endpoint de servicos para o codigo 010401
         let servicoInfo = null;
         try {
             const servicoUrl = `${baseUrl}/parametros_municipais/${municipio}/010401`;
@@ -286,7 +292,7 @@ app.get('/parametros-municipio/:municipio', async (req, res) => {
         res.json({
             ambiente: ambiente === '1' ? 'Producao' : 'Homologacao',
             municipio,
-            convenio: respConvenio.data,
+            convenio: respConvenioData,
             servico_010401: servicoInfo
         });
 
