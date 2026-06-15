@@ -115,7 +115,7 @@ app.post('/emitir-nota', async (req, res) => {
 
         let xmlDPS = `<?xml version="1.0" encoding="UTF-8"?>
 <DPS xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.00">
-  <infDPS Id="${dpsId}" versao="1.00">
+  <infDPS Id="${dpsId}">
     <tpAmb>${ambienteId}</tpAmb>
     <dhEmi>${dataEmissao}</dhEmi>
     <prest>
