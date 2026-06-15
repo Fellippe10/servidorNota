@@ -118,6 +118,7 @@ app.post('/emitir-nota', async (req, res) => {
   <infDPS Id="${dpsId}">
     <tpAmb>${ambienteId}</tpAmb>
     <dhEmi>${dataEmissao}</dhEmi>
+    <verAplic>MeuSalao_1.0</verAplic>
     <prest>
       <cpfCnpj>
         <cnpj>${credenciais.cnpj.replace(/\D/g, '')}</cnpj>
