@@ -271,29 +271,35 @@ app.get('/parametros-municipio/:municipio', async (req, res) => {
 
         // Endpoint de convenio
         let respConvenioData = null;
+        let statusConvenio = null;
         try {
             const convenioUrl = `${baseUrl}/parametros_municipais/${municipio}/convenio`;
             const respConvenio = await axios.get(convenioUrl, { headers: { 'Accept': 'application/json' }, httpsAgent });
             respConvenioData = respConvenio.data;
+            statusConvenio = respConvenio.status;
         } catch (e) {
             respConvenioData = e.response ? e.response.data : e.message;
+            statusConvenio = e.response ? e.response.status : 500;
         }
 
         // Endpoint de servicos para o codigo 010401
         let servicoInfo = null;
+        let statusServico = null;
         try {
             const servicoUrl = `${baseUrl}/parametros_municipais/${municipio}/010401`;
             const respServico = await axios.get(servicoUrl, { headers: { 'Accept': 'application/json' }, httpsAgent });
             servicoInfo = respServico.data;
+            statusServico = respServico.status;
         } catch (e) {
             servicoInfo = e.response ? e.response.data : e.message;
+            statusServico = e.response ? e.response.status : 500;
         }
 
         res.json({
             ambiente: ambiente === '1' ? 'Producao' : 'Homologacao',
             municipio,
-            convenio: respConvenioData,
-            servico_010401: servicoInfo
+            convenio: { status: statusConvenio, data: respConvenioData },
+            servico_010401: { status: statusServico, data: servicoInfo }
         });
 
     } catch (error) {
