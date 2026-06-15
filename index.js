@@ -9,31 +9,11 @@ require('dotenv').config();
 
 const app = express();
 app.use(cors());
-
-// Stripe require and initialization
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-
-// Webhook precisa de express.raw ANTES do express.json()
-app.post('/webhook/stripe', express.raw({type: 'application/json'}), (request, response) => {
-  const sig = request.headers['stripe-signature'];
-  let event;
-  try {
-    event = stripe.webhooks.constructEvent(request.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-  } catch (err) {
-    console.error(`Webhook Error: ${err.message}`);
-    return response.status(400).send(`Webhook Error: ${err.message}`);
-  }
-
-  if (event.type === 'payment_intent.succeeded') {
-    const paymentIntentSucceeded = event.data.object;
-    console.log('✅ Pagamento confirmado via Stripe Webhook!', paymentIntentSucceeded.id);
-    // TODO: Atualizar Supabase (Agendamento -> Status 'pago')
-  }
-
-  response.send();
-});
-
 app.use(express.json());
+
+// Mercado Pago SDK
+const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
+const mpClient = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN || '' });
 
 // Inicializa o Cliente do Supabase com a Chave Mestra (Service Role Key)
 // Isso nos dá poder para baixar arquivos de buckets privados
@@ -336,23 +316,55 @@ app.get('/parametros-municipio/:municipio', async (req, res) => {
     }
 });
 
-// ROTA: Criar Payment Intent (Stripe)
-app.post('/create-payment-intent', async (req, res) => {
+// ROTA: Criar Preferência de Pagamento (Mercado Pago)
+app.post('/create-preference', async (req, res) => {
     try {
-        const { amount, currency, description } = req.body;
-        // amount comes in decimal (e.g. 50.00), Stripe expects cents (5000)
-        const paymentIntent = await stripe.paymentIntents.create({
-            amount: Math.round(amount * 100),
-            currency: currency || 'brl',
-            description: description || 'Agendamento Barbearia',
-            automatic_payment_methods: {
-                enabled: true,
-            },
+        const { title, amount, quantity, back_url } = req.body;
+        const preference = new Preference(mpClient);
+        const result = await preference.create({
+            body: {
+                items: [{
+                    title: title || 'Agendamento Barbearia',
+                    quantity: quantity || 1,
+                    unit_price: Number(amount),
+                    currency_id: 'BRL',
+                }],
+                payment_methods: {
+                    excluded_payment_types: [],
+                    installments: 1,
+                },
+                back_urls: {
+                    success: back_url || 'https://seubarbearia.com/sucesso',
+                    failure: back_url || 'https://seubarbearia.com/falha',
+                    pending: back_url || 'https://seubarbearia.com/pendente',
+                },
+                auto_return: 'approved',
+            }
         });
-        res.json({ clientSecret: paymentIntent.client_secret });
+        res.json({ id: result.id, init_point: result.init_point, sandbox_init_point: result.sandbox_init_point });
     } catch (e) {
-        console.error('[STRIPE ERRO]', e.message);
+        console.error('[MP ERRO]', e.message);
         res.status(400).json({ error: e.message });
+    }
+});
+
+// WEBHOOK: Receber notificações do Mercado Pago
+app.post('/webhook/mercadopago', async (req, res) => {
+    try {
+        const { type, data } = req.body;
+        if (type === 'payment') {
+            const payment = new Payment(mpClient);
+            const paymentData = await payment.get({ id: data.id });
+            console.log(`[MP] Pagamento ${paymentData.id} - Status: ${paymentData.status}`);
+            if (paymentData.status === 'approved') {
+                console.log('✅ Pagamento aprovado via Mercado Pago!', paymentData.id);
+                // TODO: Atualizar Supabase (Agendamento -> Status 'pago')
+            }
+        }
+        res.sendStatus(200);
+    } catch (e) {
+        console.error('[MP WEBHOOK ERRO]', e.message);
+        res.sendStatus(500);
     }
 });
 
