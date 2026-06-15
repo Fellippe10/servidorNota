@@ -122,7 +122,7 @@ app.post('/emitir-nota', async (req, res) => {
             brHours, now.getUTCMinutes(), now.getUTCSeconds()
         ));
         const dataEmissao = `${brDate.getUTCFullYear()}-${pad(brDate.getUTCMonth()+1)}-${pad(brDate.getUTCDate())}T${pad(brDate.getUTCHours())}:${pad(brDate.getUTCMinutes())}:${pad(brDate.getUTCSeconds())}-03:00`;
-        const dataCompetencia = new Date().toISOString().split('T')[0]; // AAAA-MM-DD
+        const dataCompetencia = `${brDate.getUTCFullYear()}-${pad(brDate.getUTCMonth()+1)}-${pad(brDate.getUTCDate())}`;
         const nDPS = Math.floor(Math.random() * 999999999) + 1; // Número sequencial da DPS
 
         let xmlDPS = `<?xml version="1.0" encoding="UTF-8"?>
