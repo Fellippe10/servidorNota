@@ -170,6 +170,10 @@ app.post('/focus/emitir-nota', async (req, res) => {
                 codigo_cnae: "6201501", // CNAE do Prestador
                 valor_servicos: parseFloat(valor),
                 iss_retido: false
+            },
+            tributacao: {
+                tipo_retenção_pis_cofins: "0", // 0 - Não retido
+                percentual_total_tributos_simples_nacional: "6.00" // 6% conforme DAS do Simples Nacional
             }
         };
 
