@@ -123,14 +123,16 @@ app.post('/focus/emitir-nota', async (req, res) => {
 
         console.log(`[FOCUS] Nova solicitação de nota. Estabelecimento: ${estabelecimento_id}`);
 
-        // O token master configurado no .env da conta
-        const focusToken = process.env.FOCUS_NFE_API_TOKEN;
+        const focusToken = process.env.FOCUS_NFE_API_TOKEN ? process.env.FOCUS_NFE_API_TOKEN.trim() : null;
+        const ambiente = process.env.AMBIENTE || 'homologacao';
+        const cnpjEmissor = process.env.CNPJ_EMISSOR ? process.env.CNPJ_EMISSOR.replace(/\D/g, '') : '66603175000100';
+
         if (!focusToken) {
-            return res.status(500).json({ error: 'FOCUS_NFE_API_TOKEN não configurado no servidor' });
+            console.error("[ERRO FATAL] FOCUS_NFE_API_TOKEN não está definido nas variáveis de ambiente!");
+            return res.status(500).json({ error: "Erro interno: Token da Focus NFe não configurado no servidor (variável FOCUS_NFE_API_TOKEN vazia)." });
         }
 
-        // Determina ambiente da Focus
-        const ambiente = process.env.AMBIENTE || 'homologacao';
+        // 1. Configurar Base URL (Homologação ou Produção)
         const baseUrl = ambiente === 'producao' 
             ? 'https://api.focusnfe.com.br' 
             : 'https://homologacao.focusnfe.com.br';
