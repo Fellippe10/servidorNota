@@ -156,6 +156,8 @@ app.post('/focus/emitir-nota', async (req, res) => {
         const payload = {
             data_emissao: dataEmissao,
             natureza_operacao: "1", // 1 - Tributação no município
+            optante_simples_nacional: "3", // 3 - EPP (Empresa de Pequeno Porte) no Simples Nacional
+            regime_especial_tributacao: "0", // 0 - Sem regime especial
             prestador: {
                 cnpj: cnpjEmissor,
                 codigo_municipio: "3303302" // Niterói
@@ -164,6 +166,7 @@ app.post('/focus/emitir-nota', async (req, res) => {
                 aliquota: 2, // Alíquota do ISS (Ajuste conforme a ME)
                 discriminacao: servico,
                 item_lista_servico: "010101", // Código Nacional (Análise e Desenv. de Sistemas)
+                codigo_tributacao_municipio: "001", // Código Tributário Municipal de Niterói
                 codigo_cnae: "6201501", // CNAE do Prestador
                 valor_servicos: parseFloat(valor),
                 iss_retido: false
