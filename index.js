@@ -143,8 +143,8 @@ app.post('/focus/emitir-nota', async (req, res) => {
         // 2. Montar o Payload (Padrão Focus NFe que será mapeado para o Nacional)
         const dpsRef = `DPS_${Date.now()}`; // Referência única para a Focus
 
-        // Preparar datas (Fuso Horário BR)
-        const now = new Date(Date.now());
+        // Preparar datas (Fuso Horário BR) e voltar 2 minutos para evitar erro E0008 (relógio adiantado)
+        const now = new Date(Date.now() - (2 * 60 * 1000));
         const pad = (n) => String(n).padStart(2, '0');
         const brHours = now.getUTCHours() - 3;
         const brDate = new Date(Date.UTC(
