@@ -123,7 +123,7 @@ app.post('/focus/emitir-nota', async (req, res) => {
 
         console.log(`[FOCUS] Nova solicitação de nota. Estabelecimento: ${estabelecimento_id}`);
 
-        const focusToken = process.env.FOCUS_NFE_API_TOKEN ? process.env.FOCUS_NFE_API_TOKEN.trim() : null;
+        const focusToken = process.env.FOCUS_NFE_API_TOKEN ? process.env.FOCUS_NFE_API_TOKEN.replace(/['"]/g, '').trim() : null;
         const ambiente = process.env.AMBIENTE || 'homologacao';
         const cnpjEmissor = process.env.CNPJ_EMISSOR ? process.env.CNPJ_EMISSOR.replace(/\D/g, '') : '66603175000100';
 
