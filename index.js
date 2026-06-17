@@ -254,11 +254,15 @@ app.post('/focus/emitir-nota', async (req, res) => {
         });
 
     } catch (error) {
-        const errorData = error.response ? error.response.data : error.message;
-        console.error('[FOCUS ERRO]', JSON.stringify(errorData));
-        return res.status(error.response ? error.response.status : 500).json({
+        // Se houver erro de requisição ou retorno com erro da Focus
+        console.error("[ERRO SEFIN]:", error.response?.data || error.message);
+        const tokenLength = focusToken ? focusToken.length : 0;
+        const startsWithQuote = focusToken ? focusToken.startsWith('"') : false;
+
+        return res.status(400).json({ 
             error: 'Erro na API da Focus NFe',
-            detalhes: errorData
+            detalhes: error.response?.data || error.message,
+            debugToken: `Len: ${tokenLength}, Quotes: ${startsWithQuote}`
         });
     }
 });
