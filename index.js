@@ -162,7 +162,8 @@ app.post('/focus/emitir-nota', async (req, res) => {
             servico: {
                 aliquota: 2, // Alíquota do ISS (Ajuste conforme a ME)
                 discriminacao: servico,
-                item_lista_servico: "060101", // Código Nacional (Barbearia/Estética)
+                item_lista_servico: "010101", // Código Nacional (Análise e Desenv. de Sistemas)
+                codigo_cnae: "6201501", // CNAE do Prestador
                 valor_servicos: parseFloat(valor),
                 iss_retido: false
             }
@@ -210,19 +211,25 @@ app.post('/focus/emitir-nota', async (req, res) => {
             return true;
         };
 
-        // Adiciona dados do Tomador (Cliente) se existir
+        // Adiciona dados do Tomador (Cliente) se existir e for válido
         if (cpf_cnpj && cliente) {
             const cleanDoc = cpf_cnpj.replace(/\D/g, '');
-            payload.tomador = {
-                razao_social: cliente
-            };
             
             if (cleanDoc.length === 11 && isValidCPF(cleanDoc)) {
-                payload.tomador.cpf = cleanDoc;
+                payload.tomador = {
+                    razao_social: cliente,
+                    cpf: cleanDoc
+                };
             } else if (cleanDoc.length === 14 && isValidCNPJ(cleanDoc)) {
-                payload.tomador.cnpj = cleanDoc;
+                payload.tomador = {
+                    razao_social: cliente,
+                    cnpj: cleanDoc
+                };
             } else {
-                console.log(`[FOCUS] CPF/CNPJ inválido (${cleanDoc}) recebido. Emitindo sem documento na nota.`);
+                console.log(`[FOCUS] CPF/CNPJ inválido (${cleanDoc}) recebido. Emitindo sem tomador explícito.`);
+                // Como a Focus exige CPF/CNPJ se o bloco 'tomador' existir, 
+                // removemos o bloco e colocamos o nome do cliente na descrição do serviço.
+                payload.servico.discriminacao += `\nCliente: ${cliente}`;
             }
         }
 
