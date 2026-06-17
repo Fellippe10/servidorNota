@@ -256,13 +256,11 @@ app.post('/focus/emitir-nota', async (req, res) => {
     } catch (error) {
         // Se houver erro de requisição ou retorno com erro da Focus
         console.error("[ERRO SEFIN]:", error.response?.data || error.message);
-        const tokenLength = focusToken ? focusToken.length : 0;
-        const startsWithQuote = focusToken ? focusToken.startsWith('"') : false;
 
         return res.status(400).json({ 
             error: 'Erro na API da Focus NFe',
             detalhes: error.response?.data || error.message,
-            debugToken: `Len: ${tokenLength}, Quotes: ${startsWithQuote}`
+            debugInfo: "Ocorreu uma falha no envio, possivelmente o token está formatado incorretamente nas aspas duplas."
         });
     }
 });
