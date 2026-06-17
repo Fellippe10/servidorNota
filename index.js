@@ -139,7 +139,6 @@ app.post('/focus/emitir-nota', async (req, res) => {
 
         // 1. Normalmente, você bateria no Supabase para pegar o CNPJ usando o estabelecimento_id.
         // Aqui usaremos a variável local provisoriamente ou simularemos para MVP.
-        const cnpjEmissor = process.env.CNPJ_EMISSOR ? process.env.CNPJ_EMISSOR.replace(/\D/g, '') : '66603175000100';
 
         // 2. Montar o Payload (Padrão Focus NFe que será mapeado para o Nacional)
         const dpsRef = `DPS_${Date.now()}`; // Referência única para a Focus
