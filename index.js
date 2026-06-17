@@ -108,7 +108,112 @@ app.post('/webhook/mercadopago', async (req, res) => {
     }
 });
 
+// ==========================================
+// INTEGRAÇÃO FOCUS NFE (MÓDULO DE NOTAS FISCAIS)
+// ==========================================
+const axios = require('axios');
+
+app.post('/focus/emitir-nota', async (req, res) => {
+    try {
+        const { estabelecimento_id, cliente, cpf_cnpj, valor, servico } = req.body;
+
+        if (!estabelecimento_id || !valor || !servico) {
+            return res.status(400).json({ error: 'Faltam dados obrigatórios (estabelecimento_id, valor, servico)' });
+        }
+
+        console.log(`[FOCUS] Nova solicitação de nota. Estabelecimento: ${estabelecimento_id}`);
+
+        // O token master configurado no .env da conta
+        const focusToken = process.env.FOCUS_NFE_API_TOKEN;
+        if (!focusToken) {
+            return res.status(500).json({ error: 'FOCUS_NFE_API_TOKEN não configurado no servidor' });
+        }
+
+        // Determina ambiente da Focus
+        const ambiente = process.env.AMBIENTE || 'homologacao';
+        const baseUrl = ambiente === 'producao' 
+            ? 'https://api.focusnfe.com.br' 
+            : 'https://homologacao.focusnfe.com.br';
+
+        // 1. Normalmente, você bateria no Supabase para pegar o CNPJ usando o estabelecimento_id.
+        // Aqui usaremos a variável local provisoriamente ou simularemos para MVP.
+        const cnpjEmissor = process.env.CNPJ_EMISSOR ? process.env.CNPJ_EMISSOR.replace(/\D/g, '') : '66603175000100';
+
+        // 2. Montar o Payload (Formato NFS-e Nacional /v2/nfsen)
+        const dpsRef = `DPS_${Date.now()}`; // Referência única para a Focus
+
+        // Preparar datas (Fuso Horário BR)
+        const now = new Date(Date.now());
+        const pad = (n) => String(n).padStart(2, '0');
+        const brHours = now.getUTCHours() - 3;
+        const brDate = new Date(Date.UTC(
+            now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(),
+            brHours, now.getUTCMinutes(), now.getUTCSeconds()
+        ));
+        const dataEmissao = `${brDate.getUTCFullYear()}-${pad(brDate.getUTCMonth()+1)}-${pad(brDate.getUTCDate())}T${pad(brDate.getUTCHours())}:${pad(brDate.getUTCMinutes())}:${pad(brDate.getUTCSeconds())}-03:00`;
+
+        const payload = {
+            data_emissao: dataEmissao,
+            prestador: {
+                cnpj: cnpjEmissor
+            },
+            servico: {
+                codigo_tributario_nacional: "060101", // Código para barbearia/estética
+                discriminacao: servico,
+                valor_servicos: parseFloat(valor)
+            }
+        };
+
+        // Adiciona dados do Tomador (Cliente) se existir
+        if (cpf_cnpj && cliente) {
+            const cleanDoc = cpf_cnpj.replace(/\D/g, '');
+            payload.tomador = {
+                cpf_cnpj: cleanDoc,
+                razao_social: cliente
+            };
+        }
+
+        console.log(`[FOCUS] Enviando JSON para Focus NFe (${baseUrl}/v2/nfsen)...`);
+
+        // 3. Fazer o POST para a Focus NFe
+        const response = await axios.post(`${baseUrl}/v2/nfsen?ref=${dpsRef}`, payload, {
+            auth: {
+                username: focusToken,
+                password: '' // A API da Focus usa o token como username e senha vazia no Basic Auth
+            }
+        });
+
+        console.log('[FOCUS] Sucesso! Nota enviada para fila:', response.data);
+
+        return res.status(200).json({
+            sucesso: true,
+            mensagem: 'Nota enviada com sucesso para a Focus NFe',
+            dados_focus: response.data,
+            referencia: dpsRef
+        });
+
+    } catch (error) {
+        const errorData = error.response ? error.response.data : error.message;
+        console.error('[FOCUS ERRO]', JSON.stringify(errorData));
+        return res.status(error.response ? error.response.status : 500).json({
+            error: 'Erro na API da Focus NFe',
+            detalhes: errorData
+        });
+    }
+});
+
+app.post('/focus/webhook', async (req, res) => {
+    try {
+        console.log('[FOCUS WEBHOOK] Nova atualização recebida:', JSON.stringify(req.body));
+        // TODO: Mapear para o Supabase usando o req.body.ref (referência da DPS)
+        res.status(200).send('OK');
+    } catch (e) {
+        console.error('[FOCUS WEBHOOK ERRO]', e.message);
+        res.status(500).send('Erro');
+    }
+});
+
 const PORT = process.env.PORT || 80;
 app.listen(PORT, () => {
-    console.log(`🚀 Microserviço de Pagamentos rodando na porta ${PORT}`);
+    console.log(`🚀 Microserviço de Pagamentos e Notas Fiscais rodando na porta ${PORT}`);
 });
