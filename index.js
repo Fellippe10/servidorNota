@@ -139,7 +139,7 @@ app.post('/focus/emitir-nota', async (req, res) => {
         // Aqui usaremos a variável local provisoriamente ou simularemos para MVP.
         const cnpjEmissor = process.env.CNPJ_EMISSOR ? process.env.CNPJ_EMISSOR.replace(/\D/g, '') : '66603175000100';
 
-        // 2. Montar o Payload (Formato NFS-e Nacional /v2/nfsen)
+        // 2. Montar o Payload (Padrão Focus NFe que será mapeado para o Nacional)
         const dpsRef = `DPS_${Date.now()}`; // Referência única para a Focus
 
         // Preparar datas (Fuso Horário BR)
@@ -154,13 +154,17 @@ app.post('/focus/emitir-nota', async (req, res) => {
 
         const payload = {
             data_emissao: dataEmissao,
+            natureza_operacao: "1", // 1 - Tributação no município
             prestador: {
-                cnpj: cnpjEmissor
+                cnpj: cnpjEmissor,
+                codigo_municipio: "3303302" // Niterói
             },
             servico: {
-                codigo_tributario_nacional: "060101", // Código para barbearia/estética
+                aliquota: 2, // Alíquota do ISS (Ajuste conforme a ME)
                 discriminacao: servico,
-                valor_servicos: parseFloat(valor)
+                item_lista_servico: "060101", // Código Nacional (Barbearia/Estética)
+                valor_servicos: parseFloat(valor),
+                iss_retido: false
             }
         };
 
@@ -168,15 +172,19 @@ app.post('/focus/emitir-nota', async (req, res) => {
         if (cpf_cnpj && cliente) {
             const cleanDoc = cpf_cnpj.replace(/\D/g, '');
             payload.tomador = {
-                cpf_cnpj: cleanDoc,
                 razao_social: cliente
             };
+            if (cleanDoc.length === 11) {
+                payload.tomador.cpf = cleanDoc;
+            } else if (cleanDoc.length === 14) {
+                payload.tomador.cnpj = cleanDoc;
+            }
         }
 
-        console.log(`[FOCUS] Enviando JSON para Focus NFe (${baseUrl}/v2/nfsen)...`);
+        console.log(`[FOCUS] Enviando JSON para Focus NFe (${baseUrl}/v2/nfse)...`);
 
         // 3. Fazer o POST para a Focus NFe
-        const response = await axios.post(`${baseUrl}/v2/nfsen?ref=${dpsRef}`, payload, {
+        const response = await axios.post(`${baseUrl}/v2/nfse?ref=${dpsRef}`, payload, {
             auth: {
                 username: focusToken,
                 password: '' // A API da Focus usa o token como username e senha vazia no Basic Auth
