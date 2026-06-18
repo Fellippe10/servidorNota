@@ -164,7 +164,7 @@ app.post('/focus/emitir-nota', async (req, res) => {
                 aliquota: 2, // Alíquota do ISS (Ajuste conforme a ME)
                 discriminacao: servico,
                 item_lista_servico: "010101", // Código Nacional (Análise e Desenv. de Sistemas)
-                codigo_tributacao_municipio: "001", // Código Tributário Municipal de Niterói
+                codigo_tributacao_municipal_iss: "001", // Código Tributário Municipal de Niterói
                 codigo_cnae: "6201501", // CNAE do Prestador
                 valor_servicos: parseFloat(valor),
                 iss_retido: false
