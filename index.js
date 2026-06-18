@@ -163,9 +163,9 @@ app.post('/focus/emitir-nota', async (req, res) => {
             servico: {
                 aliquota: 2, // Alíquota do ISS (Ajuste conforme a ME)
                 discriminacao: servico,
-                item_lista_servico: "010101", // Código Nacional (Análise e Desenv. de Sistemas)
+                item_lista_servico: "06.01", // Código Nacional (Barbearia, cabeleireiros e afins)
                 codigo_tributacao_municipal_iss: "001", // Código Tributário Municipal de Niterói
-                codigo_cnae: "6201501", // CNAE do Prestador
+                codigo_cnae: "9602501", // CNAE de Cabeleireiros
                 valor_servicos: parseFloat(valor),
                 iss_retido: false
             }
