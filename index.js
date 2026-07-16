@@ -6,14 +6,38 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Supabase (Para buscar credenciais multi-tenant)
+const { createClient } = require('@supabase/supabase-js');
+const supabaseUrl = process.env.SUPABASE_URL || '';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''; // Deve ser a chave Service Role!
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 // Mercado Pago SDK
 const { MercadoPagoConfig, Preference, Payment } = require('mercadopago');
-const mpClient = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN || '' });
+
+// Helper para instanciar o cliente MP dinâmico por estabelecimento
+async function getMpClient(estabelecimento_id) {
+    if (!estabelecimento_id) throw new Error("estabelecimento_id não fornecido");
+
+    const { data, error } = await supabase
+        .from('estabelecimento')
+        .select('mp_access_token')
+        .eq('id', estabelecimento_id)
+        .single();
+
+    if (error || !data || !data.mp_access_token) {
+        throw new Error(`Credenciais do Mercado Pago não configuradas para o salão ${estabelecimento_id}`);
+    }
+
+    return new MercadoPagoConfig({ accessToken: data.mp_access_token });
+}
 
 // ROTA: Criar Preferência de Pagamento (Mercado Pago)
 app.post('/create-preference', async (req, res) => {
     try {
-        const { title, amount, quantity, back_url } = req.body;
+        const { title, amount, quantity, back_url, estabelecimento_id } = req.body;
+        const mpClient = await getMpClient(estabelecimento_id);
+
         const preference = new Preference(mpClient);
         const result = await preference.create({
             body: {
@@ -27,6 +51,8 @@ app.post('/create-preference', async (req, res) => {
                     excluded_payment_types: [],
                     installments: 1,
                 },
+                external_reference: estabelecimento_id,
+                notification_url: `${process.env.PUBLIC_URL}/webhook/mercadopago?tenant_id=${estabelecimento_id}`,
             }
         });
         res.json({ id: result.id, init_point: result.init_point, sandbox_init_point: result.sandbox_init_point });
@@ -39,8 +65,9 @@ app.post('/create-preference', async (req, res) => {
 // ROTA: Processar Pagamento (Checkout Transparente / Bricks)
 app.post('/process-payment', async (req, res) => {
     try {
-        const { token, issuer_id, payment_method_id, transaction_amount, installments, payer, description } = req.body;
+        const { token, issuer_id, payment_method_id, transaction_amount, installments, payer, description, estabelecimento_id } = req.body;
         
+        const mpClient = await getMpClient(estabelecimento_id);
         const payment = new Payment(mpClient);
         const result = await payment.create({
             body: {
@@ -54,10 +81,12 @@ app.post('/process-payment', async (req, res) => {
                     email: payer?.email,
                     identification: payer?.identification,
                 },
+                external_reference: estabelecimento_id,
+                notification_url: `${process.env.PUBLIC_URL}/webhook/mercadopago?tenant_id=${estabelecimento_id}`,
             }
         });
 
-        console.log(`[MP] Pagamento criado: ${result.id} - Status: ${result.status}`);
+        console.log(`[MP] Pagamento criado: ${result.id} - Status: ${result.status} (Estabelecimento: ${estabelecimento_id})`);
         res.json({
             id: result.id,
             status: result.status,
@@ -75,6 +104,9 @@ app.post('/process-payment', async (req, res) => {
 // ROTA: Verificar status do pagamento (para polling do Pix)
 app.get('/payment-status/:id', async (req, res) => {
     try {
+        const estabelecimento_id = req.query.estabelecimento_id;
+        const mpClient = await getMpClient(estabelecimento_id);
+        
         const payment = new Payment(mpClient);
         const result = await payment.get({ id: req.params.id });
         res.json({
@@ -92,15 +124,23 @@ app.get('/payment-status/:id', async (req, res) => {
 app.post('/webhook/mercadopago', async (req, res) => {
     try {
         const { type, data } = req.body;
-        if (type === 'payment') {
+        const tenant_id = req.query.tenant_id;
+
+        if (type === 'payment' && tenant_id) {
+            const mpClient = await getMpClient(tenant_id);
             const payment = new Payment(mpClient);
             const paymentData = await payment.get({ id: data.id });
-            console.log(`[MP] Pagamento ${paymentData.id} - Status: ${paymentData.status}`);
+            
+            console.log(`[MP Webhook] Pagamento ${paymentData.id} - Status: ${paymentData.status} (Salão: ${tenant_id})`);
+            
             if (paymentData.status === 'approved') {
                 console.log('✅ Pagamento aprovado via Mercado Pago!', paymentData.id);
                 // TODO: Atualizar Supabase (Agendamento -> Status 'pago')
             }
+        } else if (type === 'payment' && !tenant_id) {
+            console.warn(`[MP Webhook] Pagamento recebido sem tenant_id na query string.`);
         }
+
         res.sendStatus(200);
     } catch (e) {
         console.error('[MP WEBHOOK ERRO]', e.message);
